@@ -1,0 +1,11 @@
+{
+  "id": "zihou",
+  "name": "Zihou",
+  "version": "${project.version}",
+  "description": "${project.description}",
+  "authors": [
+    "Siroshun09"
+  ],
+  "dependencies": [],
+  "main": "net.okocraft.zihou.ZihouVelocity"
+}
