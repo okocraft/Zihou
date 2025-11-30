@@ -18,7 +18,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.concurrent.TimeUnit;
 
 public class ZihouVelocity {
 
@@ -45,16 +44,9 @@ public class ZihouVelocity {
             return;
         }
 
-        Instant now = Instant.now();
-        Instant next = now.truncatedTo(ChronoUnit.HOURS);
-
-        if (next.isBefore(now)) {
-            next = next.plusSeconds(TimeUnit.HOURS.toSeconds(1));
-        }
-
         this.server.getScheduler()
                 .buildTask(this, this::announceTime)
-                .delay(Duration.between(now, next))
+                .delay(calculateTaskDelay(Clock.systemUTC()))
                 .repeat(Duration.ofHours(1))
                 .schedule();
     }
@@ -73,5 +65,12 @@ public class ZihouVelocity {
     static LocalDateTime getAdjustedNow(Clock clock) {
         LocalDateTime now = LocalDateTime.now(clock);
         return now.getSecond() == 59 ? now.truncatedTo(ChronoUnit.HOURS).plusHours(1) : now;
+    }
+
+    @VisibleForTesting
+    static Duration calculateTaskDelay(Clock clock) {
+        Instant now = Instant.now(clock);
+        Instant next = now.plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.HOURS);
+        return Duration.between(now, next);
     }
 }
