@@ -7,3 +7,8 @@ jobs:
     with:
       java-version: '21'
       package-name: Zihou-Build-${{ github.run_number }}
+  build-java-25:
+    uses: okocraft/workflows/.github/workflows/maven.yml@v1
+    with:
+      java-version: '25'
+      package-name: Zihou-Build-${{ github.run_number }}
