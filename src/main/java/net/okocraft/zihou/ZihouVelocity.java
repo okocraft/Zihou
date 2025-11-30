@@ -1,12 +1,16 @@
 package net.okocraft.zihou;
 
 import com.google.inject.Inject;
+import com.mojang.brigadier.Command;
+import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -49,6 +53,8 @@ public class ZihouVelocity {
             .delay(calculateTaskDelay(Clock.systemUTC()))
             .repeat(Duration.ofHours(1))
             .schedule();
+
+        this.server.getCommandManager().metaBuilder(this.createCommand()).plugin(this).build();
     }
 
     @Subscribe
@@ -59,6 +65,37 @@ public class ZihouVelocity {
     private void announceTime() {
         LocalDateTime now = getAdjustedNow(Clock.systemUTC());
         this.server.sendMessage(this.config.createMessageComponent(now));
+    }
+
+    private BrigadierCommand createCommand() {
+        return new BrigadierCommand(
+            BrigadierCommand.literalArgumentBuilder("zihou")
+                .requires(source -> source.hasPermission("zihou.command"))
+                .then(
+                    BrigadierCommand.literalArgumentBuilder("reload")
+                        .executes(context -> {
+                            try {
+                                this.config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
+                                context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
+                            } catch (IOException e) {
+                                context.getSource().sendMessage(Component.text("Failed to reload config.yml: " + e.getMessage(), NamedTextColor.RED));
+                            }
+                            return Command.SINGLE_SUCCESS;
+                        })
+                )
+                .then(
+                    BrigadierCommand.literalArgumentBuilder("test")
+                        .executes(context -> {
+                            LocalDateTime now = getAdjustedNow(Clock.systemUTC());
+                            context.getSource().sendMessage(this.config.createMessageComponent(now));
+                            return Command.SINGLE_SUCCESS;
+                        })
+                )
+                .executes(context -> {
+                    context.getSource().sendMessage(Component.text("Usage: /zihou reload | /zihou test", NamedTextColor.GRAY));
+                    return Command.SINGLE_SUCCESS;
+                })
+        );
     }
 
     @VisibleForTesting
