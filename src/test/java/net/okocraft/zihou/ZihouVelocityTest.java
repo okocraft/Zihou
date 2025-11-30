@@ -27,8 +27,8 @@ class ZihouVelocityTest {
 
     private static Stream<GetAdjustedNowTestCase> getAdjustedNowTestCases() {
         return Stream.of(
-                new GetAdjustedNowTestCase(LocalDateTime.of(2025, 1, 2, 2, 59, 59), LocalDateTime.of(2025, 1, 2, 3, 0, 0)),
-                new GetAdjustedNowTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 0), LocalDateTime.of(2025, 1, 2, 3, 0, 0))
+            new GetAdjustedNowTestCase(LocalDateTime.of(2025, 1, 2, 2, 59, 59), LocalDateTime.of(2025, 1, 2, 3, 0, 0)),
+            new GetAdjustedNowTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 0), LocalDateTime.of(2025, 1, 2, 3, 0, 0))
         );
     }
 
@@ -36,8 +36,8 @@ class ZihouVelocityTest {
     @MethodSource("calculateTaskDelayTestCases")
     void calculateTaskDelay(CalculateTaskDelayTestCase testCase) {
         Assertions.assertEquals(
-                testCase.expectedDelay,
-                ZihouVelocity.calculateTaskDelay(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
+            testCase.expectedDelay,
+            ZihouVelocity.calculateTaskDelay(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
         );
     }
 
@@ -50,11 +50,11 @@ class ZihouVelocityTest {
 
     private static Stream<CalculateTaskDelayTestCase> calculateTaskDelayTestCases() {
         return Stream.of(
-                new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 2, 58, 30), Duration.ofSeconds(90)),
-                new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 2, 59, 59), Duration.ofSeconds(1)),
-                new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 0), Duration.ofHours(1)),
-                new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 1), Duration.ofHours(1).minusSeconds(1)),
-                new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 1, 30), Duration.ofHours(1).minusSeconds(90))
+            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 2, 58, 30), Duration.ofSeconds(90)),
+            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 2, 59, 59), Duration.ofSeconds(1)),
+            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 0), Duration.ofHours(1)),
+            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 1), Duration.ofHours(1).minusSeconds(1)),
+            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 1, 30), Duration.ofHours(1).minusSeconds(90))
         );
     }
 }

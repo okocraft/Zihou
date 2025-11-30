@@ -45,10 +45,10 @@ public class ZihouVelocity {
         }
 
         this.server.getScheduler()
-                .buildTask(this, this::announceTime)
-                .delay(calculateTaskDelay(Clock.systemUTC()))
-                .repeat(Duration.ofHours(1))
-                .schedule();
+            .buildTask(this, this::announceTime)
+            .delay(calculateTaskDelay(Clock.systemUTC()))
+            .repeat(Duration.ofHours(1))
+            .schedule();
     }
 
     @Subscribe

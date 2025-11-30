@@ -21,7 +21,7 @@ public record ZihouConfig(String message) {
     @VisibleForTesting
     static final String DEFAULT_MESSAGE = "<dark_gray>[<blue>時報<dark_gray>] <gray><hour>時<minute>分<second>秒になりました";
 
-    public static ZihouConfig loadFromYaml(Path filepath) throws IOException{
+    public static ZihouConfig loadFromYaml(Path filepath) throws IOException {
         if (!Files.isRegularFile(filepath)) {
             saveDefaultConfig(filepath);
             return new ZihouConfig(DEFAULT_MESSAGE);
@@ -40,13 +40,13 @@ public record ZihouConfig(String message) {
 
     public Component createMessageComponent(LocalDateTime time) {
         return MiniMessage.miniMessage().deserialize(
-                this.message,
-                Placeholder.component("year", Component.text(time.getYear())),
-                Placeholder.component("month", Component.text(time.getMonthValue())),
-                Placeholder.component("day", Component.text(time.getDayOfMonth())),
-                Placeholder.component("hour", Component.text(time.getHour())),
-                Placeholder.component("minute", Component.text(time.getMinute())),
-                Placeholder.component("second", Component.text(time.getSecond()))
+            this.message,
+            Placeholder.component("year", Component.text(time.getYear())),
+            Placeholder.component("month", Component.text(time.getMonthValue())),
+            Placeholder.component("day", Component.text(time.getDayOfMonth())),
+            Placeholder.component("hour", Component.text(time.getHour())),
+            Placeholder.component("minute", Component.text(time.getMinute())),
+            Placeholder.component("second", Component.text(time.getSecond()))
         );
     }
 }

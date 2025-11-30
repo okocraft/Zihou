@@ -21,8 +21,8 @@ class ZihouConfigTest {
         Assertions.assertEquals(ZihouConfig.DEFAULT_MESSAGE, config.message());
 
         Assertions.assertEquals(
-                "message: <dark_gray>[<blue>時報<dark_gray>] <gray><hour>時<minute>分<second>秒になりました\n",
-                Files.readString(filepath, StandardCharsets.UTF_8)
+            "message: <dark_gray>[<blue>時報<dark_gray>] <gray><hour>時<minute>分<second>秒になりました\n",
+            Files.readString(filepath, StandardCharsets.UTF_8)
         );
     }
 
@@ -53,8 +53,8 @@ class ZihouConfigTest {
     void createMessageComponent_DefaultMessage() {
         LocalDateTime time = LocalDateTime.of(2025, 1, 2, 3, 4, 5);
         Assertions.assertEquals(
-                MiniMessage.miniMessage().deserialize("<dark_gray>[<blue>時報<dark_gray>] <gray>3時4分5秒になりました"),
-                new ZihouConfig(ZihouConfig.DEFAULT_MESSAGE).createMessageComponent(time)
+            MiniMessage.miniMessage().deserialize("<dark_gray>[<blue>時報<dark_gray>] <gray>3時4分5秒になりました"),
+            new ZihouConfig(ZihouConfig.DEFAULT_MESSAGE).createMessageComponent(time)
         );
     }
 
@@ -62,8 +62,8 @@ class ZihouConfigTest {
     void createMessageComponent_Placeholder() {
         LocalDateTime time = LocalDateTime.of(2025, 1, 2, 3, 4, 5);
         Assertions.assertEquals(
-                Component.text("2025年1月2日3時4分5秒"),
-                new ZihouConfig("<year>年<month>月<day>日<hour>時<minute>分<second>秒").createMessageComponent(time)
+            Component.text("2025年1月2日3時4分5秒"),
+            new ZihouConfig("<year>年<month>月<day>日<hour>時<minute>分<second>秒").createMessageComponent(time)
         );
     }
 }
