@@ -1,2 +1,0 @@
-zihou-message: "&8[&9時報&8] &7%hour%時%minute%分%second%秒になりました"
-zihou-interval: 3600 # 間隔 (秒)
