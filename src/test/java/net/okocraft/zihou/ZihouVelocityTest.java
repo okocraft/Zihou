@@ -1,7 +1,6 @@
 package net.okocraft.zihou;
 
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -13,20 +12,23 @@ import java.util.stream.Stream;
 
 class ZihouVelocityTest {
 
-    @Test
-    void getAdjustedNow() {
-        LocalDateTime now = LocalDateTime.of(2025, 1, 2, 3, 0, 0);
+    @ParameterizedTest
+    @MethodSource("getAdjustedNowTestCases")
+    void getAdjustedNow(GetAdjustedNowTestCase testCase) {
+        Assertions.assertEquals(testCase.expected, ZihouVelocity.getAdjustedNow(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC)));
+    }
 
-        // return as-is
-        Assertions.assertEquals(
-                LocalDateTime.of(2025, 1, 2, 3, 0, 0),
-                ZihouVelocity.getAdjustedNow(Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
-        );
+    private record GetAdjustedNowTestCase(LocalDateTime now, LocalDateTime expected) {
+        @Override
+        public String toString() {
+            return this.now.toString() + " -> " + this.expected;
+        }
+    }
 
-        // return adjusted
-        Assertions.assertEquals(
-                LocalDateTime.of(2025, 1, 2, 3, 0, 0),
-                ZihouVelocity.getAdjustedNow(Clock.fixed(now.minusSeconds(1).toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
+    private static Stream<GetAdjustedNowTestCase> getAdjustedNowTestCases() {
+        return Stream.of(
+                new GetAdjustedNowTestCase(LocalDateTime.of(2025, 1, 2, 2, 59, 59), LocalDateTime.of(2025, 1, 2, 3, 0, 0)),
+                new GetAdjustedNowTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 0), LocalDateTime.of(2025, 1, 2, 3, 0, 0))
         );
     }
 
