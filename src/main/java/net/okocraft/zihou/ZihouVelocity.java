@@ -3,6 +3,7 @@ package net.okocraft.zihou;
 import com.google.inject.Inject;
 import com.mojang.brigadier.Command;
 import com.velocitypowered.api.command.BrigadierCommand;
+import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -21,6 +22,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
 public class ZihouVelocity {
@@ -30,6 +32,7 @@ public class ZihouVelocity {
     private final Path dataDirectory;
 
     private ZihouConfig config;
+    private Clock clock;
 
     @Inject
     public ZihouVelocity(@NotNull ProxyServer server, @NotNull Logger logger,
@@ -48,9 +51,17 @@ public class ZihouVelocity {
             return;
         }
 
+        ZoneId zoneId = this.config.tryParseTimezoneId();
+        if (zoneId == null) {
+            this.logger.warn("Invalid timezone id: {}", this.config.timezoneId());
+            this.clock = Clock.systemDefaultZone();
+        } else {
+            this.clock = Clock.system(zoneId);
+        }
+
         this.server.getScheduler()
             .buildTask(this, this::announceTime)
-            .delay(calculateTaskDelay(Clock.systemUTC()))
+            .delay(calculateTaskDelay(this.clock))
             .repeat(Duration.ofHours(1))
             .schedule();
 
@@ -63,7 +74,7 @@ public class ZihouVelocity {
     }
 
     private void announceTime() {
-        LocalDateTime now = getAdjustedNow(Clock.systemUTC());
+        LocalDateTime now = getAdjustedNow(this.clock);
         this.server.sendMessage(this.config.createMessageComponent(now));
     }
 
@@ -86,7 +97,7 @@ public class ZihouVelocity {
                 .then(
                     BrigadierCommand.literalArgumentBuilder("test")
                         .executes(context -> {
-                            LocalDateTime now = getAdjustedNow(Clock.systemUTC());
+                            LocalDateTime now = getAdjustedNow(this.clock);
                             context.getSource().sendMessage(this.config.createMessageComponent(now));
                             return Command.SINGLE_SUCCESS;
                         })
