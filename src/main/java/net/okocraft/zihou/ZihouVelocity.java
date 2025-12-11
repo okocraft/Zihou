@@ -65,7 +65,9 @@ public class ZihouVelocity {
             .repeat(Duration.ofHours(1))
             .schedule();
 
-        this.server.getCommandManager().metaBuilder(this.createCommand()).plugin(this).build();
+        BrigadierCommand command = this.createCommand();
+        CommandMeta meta = this.server.getCommandManager().metaBuilder(command).plugin(this).build();
+        this.server.getCommandManager().register(meta, command);
     }
 
     @Subscribe
