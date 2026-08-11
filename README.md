@@ -9,7 +9,7 @@ A Velocity plugin that announces the time to the server every hour.
 ## Requirements
 
 - Velocity 4.0.0 or later
-- Java 21 or later
+- Java 25
 
 ## Installation
 
@@ -51,7 +51,7 @@ Both commands require the `zihou.command` permission.
 
 ## Building
 
-Building requires JDK 21 or later and Maven.
+Building requires JDK 25 and Maven.
 
 ```shell
 mvn clean package
