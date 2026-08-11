@@ -2,9 +2,16 @@ name: Java CI
 on: [ push, pull_request ]
 
 jobs:
+  build-java-21:
+    uses: okocraft/workflows/.github/workflows/maven.yml@v1
+    with:
+      java-version: '21'
+      package-name: Zihou-Build-Java-21-${{ github.run_number }}
+      upload-test-results: true
+
   build-java-25:
     uses: okocraft/workflows/.github/workflows/maven.yml@v1
     with:
       java-version: '25'
-      package-name: Zihou-Build-${{ github.run_number }}
+      package-name: Zihou-Build-Java-25-${{ github.run_number }}
       upload-test-results: true
