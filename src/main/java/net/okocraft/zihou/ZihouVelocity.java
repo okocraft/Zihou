@@ -20,10 +20,11 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ZihouVelocity {
 
@@ -31,8 +32,8 @@ public class ZihouVelocity {
     private final Logger logger;
     private final Path dataDirectory;
 
-    private ZihouConfig config;
-    private Clock clock;
+    private final AtomicReference<RuntimeState> runtimeState = new AtomicReference<>();
+    private final AtomicReference<ScheduledTask> announcementTask = new AtomicReference<>();
 
     @Inject
     public ZihouVelocity(@NotNull ProxyServer server, @NotNull Logger logger,
@@ -45,39 +46,46 @@ public class ZihouVelocity {
     @Subscribe
     public void onEnable(ProxyInitializeEvent ignored) {
         try {
-            this.config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
+            ZihouConfig config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
+            this.runtimeState.set(createRuntimeState(config));
         } catch (IOException e) {
             this.logger.error("Could not load config.yml", e);
             return;
         }
 
-        ZoneId zoneId = this.config.tryParseTimezoneId();
-        if (zoneId == null) {
-            this.logger.warn("Invalid timezone id: {}", this.config.timezoneId());
-            this.clock = Clock.systemDefaultZone();
-        } else {
-            this.clock = Clock.system(zoneId);
+        RuntimeState state = this.runtimeState.get();
+        if (state.config().tryParseTimezoneId() == null) {
+            this.logger.warn("Invalid timezone id: {}", state.config().timezoneId());
         }
 
-        this.server.getScheduler()
-            .buildTask(this, this::announceTime)
-            .delay(calculateTaskDelay(this.clock))
-            .repeat(Duration.ofHours(1))
-            .schedule();
+        this.scheduleAnnouncement(state);
 
         BrigadierCommand command = this.createCommand();
         CommandMeta meta = this.server.getCommandManager().metaBuilder(command).plugin(this).build();
         this.server.getCommandManager().register(meta, command);
     }
 
+    private void scheduleAnnouncement(RuntimeState state) {
+        ScheduledTask newTask = this.server.getScheduler()
+            .buildTask(this, this::announceTime)
+            .delay(calculateTaskDelay(state.clock()))
+            .repeat(Duration.ofHours(1))
+            .schedule();
+        replaceTask(this.announcementTask, newTask);
+    }
+
     @Subscribe
     public void onDisable(ProxyShutdownEvent ignored) {
-        this.server.getScheduler().tasksByPlugin(this).forEach(ScheduledTask::cancel);
+        ScheduledTask task = this.announcementTask.getAndSet(null);
+        if (task != null) {
+            task.cancel();
+        }
     }
 
     private void announceTime() {
-        LocalDateTime now = getAdjustedNow(this.clock);
-        this.server.sendMessage(this.config.createMessageComponent(now));
+        RuntimeState state = this.runtimeState.get();
+        LocalDateTime now = getAdjustedNow(state.clock());
+        this.server.sendMessage(state.config().createMessageComponent(now));
     }
 
     private BrigadierCommand createCommand() {
@@ -88,7 +96,10 @@ public class ZihouVelocity {
                     BrigadierCommand.literalArgumentBuilder("reload")
                         .executes(context -> {
                             try {
-                                this.config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
+                                ZihouConfig config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
+                                RuntimeState state = createRuntimeState(config);
+                                this.runtimeState.set(state);
+                                this.scheduleAnnouncement(state);
                                 context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
                             } catch (IOException e) {
                                 context.getSource().sendMessage(Component.text("Failed to reload config.yml: " + e.getMessage(), NamedTextColor.RED));
@@ -99,8 +110,9 @@ public class ZihouVelocity {
                 .then(
                     BrigadierCommand.literalArgumentBuilder("test")
                         .executes(context -> {
-                            LocalDateTime now = getAdjustedNow(this.clock);
-                            context.getSource().sendMessage(this.config.createMessageComponent(now));
+                            RuntimeState state = this.runtimeState.get();
+                            LocalDateTime now = getAdjustedNow(state.clock());
+                            context.getSource().sendMessage(state.config().createMessageComponent(now));
                             return Command.SINGLE_SUCCESS;
                         })
                 )
@@ -119,8 +131,25 @@ public class ZihouVelocity {
 
     @VisibleForTesting
     static Duration calculateTaskDelay(Clock clock) {
-        Instant now = Instant.now(clock);
-        Instant next = now.plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.HOURS);
-        return Duration.between(now, next);
+        ZonedDateTime now = ZonedDateTime.now(clock);
+        ZonedDateTime next = now.truncatedTo(ChronoUnit.HOURS).plusHours(1);
+        return Duration.between(now.toInstant(), next.toInstant());
+    }
+
+    @VisibleForTesting
+    static RuntimeState createRuntimeState(ZihouConfig config) {
+        ZoneId zoneId = config.tryParseTimezoneId();
+        return new RuntimeState(config, zoneId == null ? Clock.systemDefaultZone() : Clock.system(zoneId));
+    }
+
+    @VisibleForTesting
+    static void replaceTask(AtomicReference<ScheduledTask> taskReference, ScheduledTask newTask) {
+        ScheduledTask oldTask = taskReference.getAndSet(newTask);
+        if (oldTask != null) {
+            oldTask.cancel();
+        }
+    }
+
+    record RuntimeState(ZihouConfig config, Clock clock) {
     }
 }
