@@ -40,25 +40,40 @@ class ZihouVelocityTest {
     }
 
     @Test
-    void replaceTaskPublishesNewTaskAndCancelsPreviousTask() {
+    void replaceRuntimeStateAndTaskCancelsPreviousTaskBeforePublishingState() {
+        ZihouVelocity.RuntimeState previousState = ZihouVelocity.createRuntimeState(new ZihouConfig("old", "UTC"));
+        ZihouVelocity.RuntimeState replacementState = ZihouVelocity.createRuntimeState(new ZihouConfig("new", "Asia/Kolkata"));
+        AtomicReference<ZihouVelocity.RuntimeState> runtimeStateReference = new AtomicReference<>(previousState);
         AtomicBoolean cancelled = new AtomicBoolean();
-        ScheduledTask previous = scheduledTask(cancelled);
-        ScheduledTask replacement = scheduledTask(new AtomicBoolean());
+        AtomicBoolean replacementPublishedWhenCancelled = new AtomicBoolean();
+        ScheduledTask previous = scheduledTask(() -> {
+            cancelled.set(true);
+            replacementPublishedWhenCancelled.set(runtimeStateReference.get() == replacementState);
+        });
+        ScheduledTask replacement = scheduledTask(() -> {
+        });
         AtomicReference<ScheduledTask> taskReference = new AtomicReference<>(previous);
 
-        ZihouVelocity.replaceTask(taskReference, replacement);
+        ZihouVelocity.replaceRuntimeStateAndTask(
+            runtimeStateReference,
+            taskReference,
+            replacementState,
+            replacement
+        );
 
         Assertions.assertSame(replacement, taskReference.get());
         Assertions.assertTrue(cancelled.get());
+        Assertions.assertFalse(replacementPublishedWhenCancelled.get());
+        Assertions.assertSame(replacementState, runtimeStateReference.get());
     }
 
-    private static ScheduledTask scheduledTask(AtomicBoolean cancelled) {
+    private static ScheduledTask scheduledTask(Runnable onCancel) {
         return (ScheduledTask) Proxy.newProxyInstance(
             ScheduledTask.class.getClassLoader(),
             new Class<?>[]{ScheduledTask.class},
             (proxy, method, args) -> {
                 if (method.getName().equals("cancel")) {
-                    cancelled.set(true);
+                    onCancel.run();
                 }
                 return null;
             }
