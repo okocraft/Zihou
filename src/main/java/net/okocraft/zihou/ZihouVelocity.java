@@ -45,33 +45,33 @@ public class ZihouVelocity {
 
     @Subscribe
     public void onEnable(ProxyInitializeEvent ignored) {
+        RuntimeState state;
         try {
             ZihouConfig config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
-            this.runtimeState.set(createRuntimeState(config));
+            state = createRuntimeState(config);
         } catch (IOException e) {
             this.logger.error("Could not load config.yml", e);
             return;
         }
 
-        RuntimeState state = this.runtimeState.get();
         if (state.config().tryParseTimezoneId() == null) {
             this.logger.warn("Invalid timezone id: {}", state.config().timezoneId());
         }
 
-        this.scheduleAnnouncement(state);
+        ScheduledTask newTask = this.scheduleAnnouncement(state);
+        replaceRuntimeStateAndTask(this.runtimeState, this.announcementTask, state, newTask);
 
         BrigadierCommand command = this.createCommand();
         CommandMeta meta = this.server.getCommandManager().metaBuilder(command).plugin(this).build();
         this.server.getCommandManager().register(meta, command);
     }
 
-    private void scheduleAnnouncement(RuntimeState state) {
-        ScheduledTask newTask = this.server.getScheduler()
-            .buildTask(this, this::announceTime)
+    private ScheduledTask scheduleAnnouncement(RuntimeState state) {
+        return this.server.getScheduler()
+            .buildTask(this, () -> this.announceTime(state))
             .delay(calculateTaskDelay(state.clock()))
             .repeat(Duration.ofHours(1))
             .schedule();
-        replaceTask(this.announcementTask, newTask);
     }
 
     @Subscribe
@@ -82,8 +82,7 @@ public class ZihouVelocity {
         }
     }
 
-    private void announceTime() {
-        RuntimeState state = this.runtimeState.get();
+    private void announceTime(RuntimeState state) {
         LocalDateTime now = getAdjustedNow(state.clock());
         this.server.sendMessage(state.config().createMessageComponent(now));
     }
@@ -98,8 +97,8 @@ public class ZihouVelocity {
                             try {
                                 ZihouConfig config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
                                 RuntimeState state = createRuntimeState(config);
-                                this.runtimeState.set(state);
-                                this.scheduleAnnouncement(state);
+                                ScheduledTask newTask = this.scheduleAnnouncement(state);
+                                replaceRuntimeStateAndTask(this.runtimeState, this.announcementTask, state, newTask);
                                 context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
                             } catch (IOException e) {
                                 context.getSource().sendMessage(Component.text("Failed to reload config.yml: " + e.getMessage(), NamedTextColor.RED));
@@ -143,11 +142,15 @@ public class ZihouVelocity {
     }
 
     @VisibleForTesting
-    static void replaceTask(AtomicReference<ScheduledTask> taskReference, ScheduledTask newTask) {
+    static void replaceRuntimeStateAndTask(AtomicReference<RuntimeState> runtimeStateReference,
+                                           AtomicReference<ScheduledTask> taskReference,
+                                           RuntimeState newState,
+                                           ScheduledTask newTask) {
         ScheduledTask oldTask = taskReference.getAndSet(newTask);
         if (oldTask != null) {
             oldTask.cancel();
         }
+        runtimeStateReference.set(newState);
     }
 
     record RuntimeState(ZihouConfig config, Clock clock) {
