@@ -17,22 +17,29 @@ class ZihouTest {
     @ParameterizedTest
     @MethodSource("getAdjustedNowTestCases")
     void getAdjustedNow(GetAdjustedNowTestCase testCase) {
-        Zihou zihou = new Zihou(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC), _ -> Component.empty());
+        Clock clock = Clock.fixed(testCase.now.atZone(testCase.zone).toInstant(), testCase.zone);
+        Zihou zihou = new Zihou(clock, _ -> Component.empty());
         Assertions.assertEquals(testCase.expected, zihou.getAdjustedNow());
     }
 
-    private record GetAdjustedNowTestCase(LocalDateTime now, LocalDateTime expected) {
+    private record GetAdjustedNowTestCase(ZoneId zone, LocalDateTime now, LocalDateTime expected) {
         @Override
         public String toString() {
-            return this.now.toString() + " -> " + this.expected;
+            return this.zone + " " + this.now.toString() + " -> " + this.expected;
         }
     }
 
     private static Stream<GetAdjustedNowTestCase> getAdjustedNowTestCases() {
         return Stream.of(
-            new GetAdjustedNowTestCase(LocalDateTime.of(2025, 1, 2, 2, 59, 59), LocalDateTime.of(2025, 1, 2, 3, 0, 0)),
-            new GetAdjustedNowTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 0), LocalDateTime.of(2025, 1, 2, 3, 0, 0))
-        );
+                ZoneOffset.UTC,
+                ZoneId.of("Australia/Adelaide"),
+                ZoneId.of("Asia/Kathmandu"),
+                ZoneId.of("Asia/Tokyo")
+            )
+            .flatMap(zone -> Stream.of(
+                new GetAdjustedNowTestCase(zone, LocalDateTime.of(2025, 1, 2, 2, 59, 59), LocalDateTime.of(2025, 1, 2, 3, 0, 0)),
+                new GetAdjustedNowTestCase(zone, LocalDateTime.of(2025, 1, 2, 3, 0, 0), LocalDateTime.of(2025, 1, 2, 3, 0, 0))
+            ));
     }
 
     @ParameterizedTest
