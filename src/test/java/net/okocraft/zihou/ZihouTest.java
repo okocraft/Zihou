@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.stream.Stream;
 
@@ -37,24 +38,31 @@ class ZihouTest {
     @ParameterizedTest
     @MethodSource("calculateTaskDelayTestCases")
     void calculateTaskDelay(CalculateTaskDelayTestCase testCase) {
-        Zihou zihou = new Zihou(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC), _ -> Component.empty());
+        Clock clock = Clock.fixed(testCase.now.atZone(testCase.zone).toInstant(), testCase.zone);
+        Zihou zihou = new Zihou(clock, _ -> Component.empty());
         Assertions.assertEquals(testCase.expectedDelay, zihou.calculateTaskDelay());
     }
 
-    private record CalculateTaskDelayTestCase(LocalDateTime now, Duration expectedDelay) {
+    private record CalculateTaskDelayTestCase(ZoneId zone, LocalDateTime now, Duration expectedDelay) {
         @Override
         public String toString() {
-            return this.now.toString() + " -> " + this.expectedDelay;
+            return this.zone + " " + this.now + " -> " + this.expectedDelay;
         }
     }
 
     private static Stream<CalculateTaskDelayTestCase> calculateTaskDelayTestCases() {
         return Stream.of(
-            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 2, 58, 30), Duration.ofSeconds(90)),
-            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 2, 59, 59), Duration.ofSeconds(1)),
-            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 0), Duration.ofHours(1)),
-            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 0, 1), Duration.ofHours(1).minusSeconds(1)),
-            new CalculateTaskDelayTestCase(LocalDateTime.of(2025, 1, 2, 3, 1, 30), Duration.ofHours(1).minusSeconds(90))
-        );
+                ZoneOffset.UTC,
+                ZoneId.of("Australia/Adelaide"),
+                ZoneId.of("Asia/Kathmandu"),
+                ZoneId.of("Asia/Tokyo")
+            )
+            .flatMap(zone -> Stream.of(
+                new CalculateTaskDelayTestCase(zone, LocalDateTime.of(2025, 1, 2, 2, 58, 30), Duration.ofSeconds(90)),
+                new CalculateTaskDelayTestCase(zone, LocalDateTime.of(2025, 1, 2, 2, 59, 59), Duration.ofSeconds(1)),
+                new CalculateTaskDelayTestCase(zone, LocalDateTime.of(2025, 1, 2, 3, 0, 0), Duration.ofHours(1)),
+                new CalculateTaskDelayTestCase(zone, LocalDateTime.of(2025, 1, 2, 3, 0, 1), Duration.ofHours(1).minusSeconds(1)),
+                new CalculateTaskDelayTestCase(zone, LocalDateTime.of(2025, 1, 2, 3, 1, 30), Duration.ofHours(1).minusSeconds(90))
+            ));
     }
 }

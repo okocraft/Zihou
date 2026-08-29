@@ -6,9 +6,9 @@ import org.jetbrains.annotations.VisibleForTesting;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAccessor;
 import java.util.function.Function;
@@ -28,9 +28,9 @@ public record Zihou(Clock clock, Function<TemporalAccessor, Component> toMessage
     }
 
     public Duration calculateTaskDelay() {
-        Instant now = Instant.now(this.clock);
-        Instant next = now.plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.HOURS);
-        return Duration.between(now, next);
+        ZonedDateTime now = ZonedDateTime.now(this.clock);
+        ZonedDateTime next = now.truncatedTo(ChronoUnit.HOURS).plusHours(1);
+        return Duration.between(now.toInstant(), next.toInstant());
     }
 
     @VisibleForTesting
