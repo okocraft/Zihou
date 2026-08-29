@@ -13,17 +13,13 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
+import java.util.function.Consumer;
 
 public class ZihouVelocity {
 
@@ -31,8 +27,8 @@ public class ZihouVelocity {
     private final Logger logger;
     private final Path dataDirectory;
 
+    private ScheduledTask scheduledTask;
     private ZihouConfig config;
-    private Clock clock;
 
     @Inject
     public ZihouVelocity(@NotNull ProxyServer server, @NotNull Logger logger,
@@ -45,29 +41,14 @@ public class ZihouVelocity {
     @Subscribe
     public void onEnable(ProxyInitializeEvent ignored) {
         try {
-            this.config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
+            this.config = this.loadAndValidate(this.logger::warn);
         } catch (IOException e) {
-            this.logger.error("Could not load config.yml", e);
+            this.logger.error("Could not load config.yml: {}", e.getMessage());
             return;
         }
 
-        ZoneId zoneId = this.config.tryParseTimezoneId();
-        if (zoneId == null) {
-            this.logger.warn("Invalid timezone id: {}", this.config.timezoneId());
-            this.clock = Clock.systemDefaultZone();
-        } else {
-            this.clock = Clock.system(zoneId);
-        }
-
-        this.server.getScheduler()
-            .buildTask(this, this::announceTime)
-            .delay(calculateTaskDelay(this.clock))
-            .repeat(Duration.ofHours(1))
-            .schedule();
-
-        BrigadierCommand command = this.createCommand();
-        CommandMeta meta = this.server.getCommandManager().metaBuilder(command).plugin(this).build();
-        this.server.getCommandManager().register(meta, command);
+        this.schedule();
+        this.registerCommand();
     }
 
     @Subscribe
@@ -75,9 +56,10 @@ public class ZihouVelocity {
         this.server.getScheduler().tasksByPlugin(this).forEach(ScheduledTask::cancel);
     }
 
-    private void announceTime() {
-        LocalDateTime now = getAdjustedNow(this.clock);
-        this.server.sendMessage(this.config.createMessageComponent(now));
+    private void registerCommand() {
+        BrigadierCommand command = this.createCommand();
+        CommandMeta meta = this.server.getCommandManager().metaBuilder(command).plugin(this).build();
+        this.server.getCommandManager().register(meta, command);
     }
 
     private BrigadierCommand createCommand() {
@@ -88,19 +70,21 @@ public class ZihouVelocity {
                     BrigadierCommand.literalArgumentBuilder("reload")
                         .executes(context -> {
                             try {
-                                this.config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
-                                context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
+                                this.config = this.loadAndValidate(warn -> context.getSource().sendMessage(Component.text(warn, NamedTextColor.YELLOW)));
                             } catch (IOException e) {
                                 context.getSource().sendMessage(Component.text("Failed to reload config.yml: " + e.getMessage(), NamedTextColor.RED));
+                                return 0;
                             }
+
+                            this.schedule();
+                            context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
                             return Command.SINGLE_SUCCESS;
                         })
                 )
                 .then(
                     BrigadierCommand.literalArgumentBuilder("test")
                         .executes(context -> {
-                            LocalDateTime now = getAdjustedNow(this.clock);
-                            context.getSource().sendMessage(this.config.createMessageComponent(now));
+                            Zihou.create(this.config).announce(context.getSource());
                             return Command.SINGLE_SUCCESS;
                         })
                 )
@@ -111,16 +95,27 @@ public class ZihouVelocity {
         );
     }
 
-    @VisibleForTesting
-    static LocalDateTime getAdjustedNow(Clock clock) {
-        LocalDateTime now = LocalDateTime.now(clock);
-        return now.getSecond() == 59 ? now.truncatedTo(ChronoUnit.HOURS).plusHours(1) : now;
+    private ZihouConfig loadAndValidate(Consumer<String> warn) throws IOException {
+        ZihouConfig config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
+
+        ZoneId zoneId = config.tryParseTimezoneId();
+        if (zoneId == null) {
+            warn.accept("Could not parse timezone id: " + config.timezoneId());
+        }
+
+        return config;
     }
 
-    @VisibleForTesting
-    static Duration calculateTaskDelay(Clock clock) {
-        Instant now = Instant.now(clock);
-        Instant next = now.plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.HOURS);
-        return Duration.between(now, next);
+    private synchronized void schedule() {
+        if (this.scheduledTask != null) {
+            this.scheduledTask.cancel();
+        }
+
+        Zihou zihou = Zihou.create(this.config);
+        this.scheduledTask = this.server.getScheduler()
+            .buildTask(this, () -> zihou.announce(this.server))
+            .delay(zihou.calculateTaskDelay())
+            .repeat(Duration.ofHours(1))
+            .schedule();
     }
 }

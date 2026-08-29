@@ -1,5 +1,6 @@
 package net.okocraft.zihou;
 
+import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -10,12 +11,13 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.stream.Stream;
 
-class ZihouVelocityTest {
+class ZihouTest {
 
     @ParameterizedTest
     @MethodSource("getAdjustedNowTestCases")
     void getAdjustedNow(GetAdjustedNowTestCase testCase) {
-        Assertions.assertEquals(testCase.expected, ZihouVelocity.getAdjustedNow(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC)));
+        Zihou zihou = new Zihou(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC), _ -> Component.empty());
+        Assertions.assertEquals(testCase.expected, zihou.getAdjustedNow());
     }
 
     private record GetAdjustedNowTestCase(LocalDateTime now, LocalDateTime expected) {
@@ -35,10 +37,8 @@ class ZihouVelocityTest {
     @ParameterizedTest
     @MethodSource("calculateTaskDelayTestCases")
     void calculateTaskDelay(CalculateTaskDelayTestCase testCase) {
-        Assertions.assertEquals(
-            testCase.expectedDelay,
-            ZihouVelocity.calculateTaskDelay(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
-        );
+        Zihou zihou = new Zihou(Clock.fixed(testCase.now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC), _ -> Component.empty());
+        Assertions.assertEquals(testCase.expectedDelay, zihou.calculateTaskDelay());
     }
 
     private record CalculateTaskDelayTestCase(LocalDateTime now, Duration expectedDelay) {
