@@ -15,8 +15,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.DateTimeException;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 
 @NotNullByDefault
 public record ZihouConfig(String message, String timezoneId) {
@@ -54,15 +55,15 @@ public record ZihouConfig(String message, String timezoneId) {
         }
     }
 
-    public Component createMessageComponent(LocalDateTime time) {
+    public Component createMessageComponent(TemporalAccessor time) {
         return MiniMessage.miniMessage().deserialize(
             this.message,
-            Placeholder.component("year", Component.text(time.getYear())),
-            Placeholder.component("month", Component.text(time.getMonthValue())),
-            Placeholder.component("day", Component.text(time.getDayOfMonth())),
-            Placeholder.component("hour", Component.text(time.getHour())),
-            Placeholder.component("minute", Component.text(time.getMinute())),
-            Placeholder.component("second", Component.text(time.getSecond()))
+            Placeholder.component("year", Component.text(time.get(ChronoField.YEAR))),
+            Placeholder.component("month", Component.text(time.get(ChronoField.MONTH_OF_YEAR))),
+            Placeholder.component("day", Component.text(time.get(ChronoField.DAY_OF_MONTH))),
+            Placeholder.component("hour", Component.text(time.get(ChronoField.HOUR_OF_DAY))),
+            Placeholder.component("minute", Component.text(time.get(ChronoField.MINUTE_OF_HOUR))),
+            Placeholder.component("second", Component.text(time.get(ChronoField.SECOND_OF_MINUTE)))
         );
     }
 }
