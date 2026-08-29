@@ -50,7 +50,7 @@ public record Zihou(Clock clock, Function<TemporalAccessor, Component> toMessage
     @VisibleForTesting
     LocalDateTime getAdjustedNow() {
         LocalDateTime now = LocalDateTime.now(this.clock);
-        return now.getSecond() == 59 ? now.truncatedTo(ChronoUnit.HOURS).plusHours(1) : now;
+        return now.getMinute() == 59 && now.getSecond() == 59 ? now.truncatedTo(ChronoUnit.HOURS).plusHours(1) : now;
     }
 
 }

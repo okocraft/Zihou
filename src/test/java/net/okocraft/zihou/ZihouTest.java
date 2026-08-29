@@ -38,8 +38,10 @@ class ZihouTest {
                 ZoneId.of("Asia/Tokyo")
             )
             .flatMap(zone -> Stream.of(
+                new GetAdjustedNowTestCase(zone, LocalDateTime.of(2025, 1, 2, 2, 59, 58), LocalDateTime.of(2025, 1, 2, 2, 59, 58)),
                 new GetAdjustedNowTestCase(zone, LocalDateTime.of(2025, 1, 2, 2, 59, 59), LocalDateTime.of(2025, 1, 2, 3, 0, 0)),
-                new GetAdjustedNowTestCase(zone, LocalDateTime.of(2025, 1, 2, 3, 0, 0), LocalDateTime.of(2025, 1, 2, 3, 0, 0))
+                new GetAdjustedNowTestCase(zone, LocalDateTime.of(2025, 1, 2, 3, 0, 0), LocalDateTime.of(2025, 1, 2, 3, 0, 0)),
+                new GetAdjustedNowTestCase(zone, LocalDateTime.of(2025, 1, 2, 3, 0, 59), LocalDateTime.of(2025, 1, 2, 3, 0, 59))
             ));
     }
 
