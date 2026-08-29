@@ -27,8 +27,8 @@ public class ZihouVelocity {
     private final Logger logger;
     private final Path dataDirectory;
 
-    private final AtomicReference<ScheduledTask> taskRef = new AtomicReference<>();
     private final AtomicReference<ZihouConfig> configRef = new AtomicReference<>(ZihouConfig.DEFAULT);
+    private ScheduledTask scheduledTask;
 
     @Inject
     public ZihouVelocity(@NotNull ProxyServer server, @NotNull Logger logger,
@@ -106,20 +106,19 @@ public class ZihouVelocity {
         return config;
     }
 
-    private void scheduleNext() {
-        ScheduledTask scheduled = this.taskRef.getAndSet(null);
-        if (scheduled != null) {
-            scheduled.cancel();
+    private synchronized void scheduleNext() {
+        if (this.scheduledTask != null) {
+            this.scheduledTask.cancel();
+            this.scheduledTask = null;
         }
 
         Zihou zihou = Zihou.create(this.configRef.get());
-        this.taskRef.set(this.server.getScheduler()
+        this.scheduledTask = this.server.getScheduler()
             .buildTask(this, () -> {
                 zihou.announce(this.server);
                 this.scheduleNext();
             })
             .delay(zihou.calculateTaskDelay())
-            .schedule()
-        );
+            .schedule();
     }
 }
