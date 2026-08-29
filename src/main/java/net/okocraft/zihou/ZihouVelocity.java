@@ -50,7 +50,7 @@ public class ZihouVelocity {
             this.logger.warn("Could not parse timezone id: {}", this.configRef.get().timezoneId());
         }
 
-        this.scheduleNext();
+        this.scheduleNext(false);
         this.registerCommand();
     }
 
@@ -87,7 +87,7 @@ public class ZihouVelocity {
                             }
 
                             this.configRef.set(config);
-                            this.scheduleNext();
+                            this.scheduleNext(true);
                             context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
                             return Command.SINGLE_SUCCESS;
                         })
@@ -106,17 +106,16 @@ public class ZihouVelocity {
         );
     }
 
-    private synchronized void scheduleNext() {
-        if (this.scheduledTask != null) {
+    private synchronized void scheduleNext(boolean cancel) {
+        if (cancel && this.scheduledTask != null) {
             this.scheduledTask.cancel();
-            this.scheduledTask = null;
         }
 
         Zihou zihou = Zihou.create(this.configRef.get());
         this.scheduledTask = this.server.getScheduler()
             .buildTask(this, () -> {
                 zihou.announce(this.server);
-                this.scheduleNext();
+                this.scheduleNext(false);
             })
             .delay(zihou.calculateTaskDelay())
             .schedule();
