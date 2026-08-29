@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.ZoneId;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class ZihouVelocity {
@@ -26,9 +27,8 @@ public class ZihouVelocity {
     private final Logger logger;
     private final Path dataDirectory;
 
-    private ScheduledTask scheduledTask;
-    private ZihouConfig config;
-    private Zihou zihou;
+    private final AtomicReference<ScheduledTask> taskRef = new AtomicReference<>();
+    private final AtomicReference<ZihouConfig> configRef = new AtomicReference<>(ZihouConfig.DEFAULT);
 
     @Inject
     public ZihouVelocity(@NotNull ProxyServer server, @NotNull Logger logger,
@@ -41,13 +41,13 @@ public class ZihouVelocity {
     @Subscribe
     public void onEnable(ProxyInitializeEvent ignored) {
         try {
-            this.config = this.loadAndValidate(this.logger::warn);
+            this.configRef.set(this.loadAndValidate(this.logger::warn));
         } catch (IOException e) {
             this.logger.error("Could not load config.yml: {}", e.getMessage());
             return;
         }
 
-        this.schedule();
+        this.scheduleNext();
         this.registerCommand();
     }
 
@@ -70,13 +70,13 @@ public class ZihouVelocity {
                     BrigadierCommand.literalArgumentBuilder("reload")
                         .executes(context -> {
                             try {
-                                this.config = this.loadAndValidate(warn -> context.getSource().sendMessage(Component.text(warn, NamedTextColor.YELLOW)));
+                                this.configRef.set(this.loadAndValidate(warn -> context.getSource().sendMessage(Component.text(warn, NamedTextColor.YELLOW))));
                             } catch (IOException e) {
                                 context.getSource().sendMessage(Component.text("Failed to reload config.yml: " + e.getMessage(), NamedTextColor.RED));
                                 return 0;
                             }
 
-                            this.schedule();
+                            this.scheduleNext();
                             context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
                             return Command.SINGLE_SUCCESS;
                         })
@@ -84,7 +84,7 @@ public class ZihouVelocity {
                 .then(
                     BrigadierCommand.literalArgumentBuilder("test")
                         .executes(context -> {
-                            Zihou.create(this.config).announce(context.getSource());
+                            Zihou.create(this.configRef.get()).announce(context.getSource());
                             return Command.SINGLE_SUCCESS;
                         })
                 )
@@ -106,27 +106,20 @@ public class ZihouVelocity {
         return config;
     }
 
-    private synchronized void schedule() {
-        if (this.scheduledTask != null) {
-            this.scheduledTask.cancel();
-            this.scheduledTask = null;
+    private void scheduleNext() {
+        ScheduledTask scheduled = this.taskRef.getAndSet(null);
+        if (scheduled != null) {
+            scheduled.cancel();
         }
 
-        this.zihou = Zihou.create(this.config);
-        this.scheduleNext(this.zihou);
-    }
-
-    private synchronized void scheduleNext(Zihou zihou) {
-        if (this.zihou != zihou) { // the config has been reloaded while the task was running
-            return;
-        }
-
-        this.scheduledTask = this.server.getScheduler()
+        Zihou zihou = Zihou.create(this.configRef.get());
+        this.taskRef.set(this.server.getScheduler()
             .buildTask(this, () -> {
                 zihou.announce(this.server);
-                this.scheduleNext(zihou);
+                this.scheduleNext();
             })
             .delay(zihou.calculateTaskDelay())
-            .schedule();
+            .schedule()
+        );
     }
 }

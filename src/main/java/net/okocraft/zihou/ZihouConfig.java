@@ -5,7 +5,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.VisibleForTesting;
 import org.spongepowered.configurate.BasicConfigurationNode;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.yaml.NodeStyle;
@@ -22,24 +21,27 @@ import java.time.temporal.TemporalAccessor;
 @NotNullByDefault
 public record ZihouConfig(String message, String timezoneId) {
 
-    @VisibleForTesting
-    static final String DEFAULT_MESSAGE = "<dark_gray>[<blue>時報<dark_gray>] <gray><hour>時<minute>分<second>秒になりました";
+    public static final ZihouConfig DEFAULT = new ZihouConfig(
+        "<dark_gray>[<blue>時報<dark_gray>] <gray><hour>時<minute>分<second>秒になりました",
+        ""
+    );
+
 
     public static ZihouConfig loadFromYaml(Path filepath) throws IOException {
         if (!Files.isRegularFile(filepath)) {
             saveDefaultConfig(filepath);
-            return new ZihouConfig(DEFAULT_MESSAGE, "");
+            return DEFAULT;
         }
 
         ConfigurationNode root = YamlConfigurationLoader.builder().path(filepath).build().load();
-        String message = root.node("message").getString(DEFAULT_MESSAGE);
+        String message = root.node("message").getString(DEFAULT.message());
         String timezoneId = root.node("timezone-id").getString("");
         return new ZihouConfig(message, timezoneId);
     }
 
     private static void saveDefaultConfig(Path filepath) throws IOException {
         ConfigurationNode root = BasicConfigurationNode.root();
-        root.node("message").set(DEFAULT_MESSAGE);
+        root.node("message").set(DEFAULT.message());
         root.node("timezone-id").set(ZoneId.systemDefault().getId());
         YamlConfigurationLoader.builder().path(filepath).nodeStyle(NodeStyle.BLOCK).build().save(root);
     }

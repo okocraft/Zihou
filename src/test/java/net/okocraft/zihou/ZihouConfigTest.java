@@ -20,7 +20,7 @@ class ZihouConfigTest {
     void loadFromYaml_FileNotExists(@TempDir Path dir) throws IOException {
         Path filepath = dir.resolve("config.yml");
         ZihouConfig config = ZihouConfig.loadFromYaml(filepath);
-        Assertions.assertEquals(ZihouConfig.DEFAULT_MESSAGE, config.message());
+        Assertions.assertEquals(ZihouConfig.DEFAULT.message(), config.message());
 
         Assertions.assertEquals(
             """
@@ -52,7 +52,7 @@ class ZihouConfigTest {
         Files.writeString(filepath, yamlContent, StandardCharsets.UTF_8);
 
         ZihouConfig config = ZihouConfig.loadFromYaml(filepath);
-        Assertions.assertEquals(ZihouConfig.DEFAULT_MESSAGE, config.message());
+        Assertions.assertEquals(ZihouConfig.DEFAULT.message(), config.message());
         Assertions.assertEquals("", config.timezoneId());
         Assertions.assertEquals(yamlContent, Files.readString(filepath, StandardCharsets.UTF_8));
     }
@@ -77,7 +77,7 @@ class ZihouConfigTest {
         LocalDateTime time = LocalDateTime.of(2025, 1, 2, 3, 4, 5);
         Assertions.assertEquals(
             MiniMessage.miniMessage().deserialize("<dark_gray>[<blue>時報<dark_gray>] <gray>3時4分5秒になりました"),
-            new ZihouConfig(ZihouConfig.DEFAULT_MESSAGE, "").createMessageComponent(time)
+            new ZihouConfig(ZihouConfig.DEFAULT.message(), "").createMessageComponent(time)
         );
     }
 
