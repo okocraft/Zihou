@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 public class ZihouVelocity {
 
@@ -41,10 +40,14 @@ public class ZihouVelocity {
     @Subscribe
     public void onEnable(ProxyInitializeEvent ignored) {
         try {
-            this.configRef.set(this.loadAndValidate(this.logger::warn));
+            this.configRef.set(ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml")));
         } catch (IOException e) {
             this.logger.error("Could not load config.yml: {}", e.getMessage());
-            return;
+        }
+
+        ZoneId zoneId = this.configRef.get().tryParseTimezoneId();
+        if (zoneId == null) {
+            this.logger.warn("Could not parse timezone id: {}", this.configRef.get().timezoneId());
         }
 
         this.scheduleNext();
@@ -69,13 +72,21 @@ public class ZihouVelocity {
                 .then(
                     BrigadierCommand.literalArgumentBuilder("reload")
                         .executes(context -> {
+                            ZihouConfig config;
                             try {
-                                this.configRef.set(this.loadAndValidate(warn -> context.getSource().sendMessage(Component.text(warn, NamedTextColor.YELLOW))));
+                                config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
                             } catch (IOException e) {
                                 context.getSource().sendMessage(Component.text("Failed to reload config.yml: " + e.getMessage(), NamedTextColor.RED));
                                 return 0;
                             }
 
+                            ZoneId zoneId = config.tryParseTimezoneId();
+                            if (zoneId == null) {
+                                context.getSource().sendMessage(Component.text("Could not parse timezone id: " + config.timezoneId(), NamedTextColor.YELLOW));
+                                return 0;
+                            }
+
+                            this.configRef.set(config);
                             this.scheduleNext();
                             context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
                             return Command.SINGLE_SUCCESS;
@@ -93,17 +104,6 @@ public class ZihouVelocity {
                     return Command.SINGLE_SUCCESS;
                 })
         );
-    }
-
-    private ZihouConfig loadAndValidate(Consumer<String> warn) throws IOException {
-        ZihouConfig config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
-
-        ZoneId zoneId = config.tryParseTimezoneId();
-        if (zoneId == null) {
-            warn.accept("Could not parse timezone id: " + config.timezoneId());
-        }
-
-        return config;
     }
 
     private synchronized void scheduleNext() {
