@@ -76,19 +76,19 @@ public class ZihouVelocity {
                             try {
                                 config = ZihouConfig.loadFromYaml(this.dataDirectory.resolve("config.yml"));
                             } catch (IOException e) {
-                                context.getSource().sendMessage(Component.text("Failed to reload config.yml: " + e.getMessage(), NamedTextColor.RED));
+                                context.getSource().sendMessage(Component.text("Zihou: Failed to reload config.yml: " + e.getMessage(), NamedTextColor.RED));
                                 return 0;
                             }
 
                             ZoneId zoneId = config.tryParseTimezoneId();
                             if (zoneId == null) {
-                                context.getSource().sendMessage(Component.text("Could not parse timezone id: " + config.timezoneId(), NamedTextColor.YELLOW));
+                                context.getSource().sendMessage(Component.text("Zihou: Could not parse timezone id: " + config.timezoneId(), NamedTextColor.YELLOW));
                                 return 0;
                             }
 
                             this.configRef.set(config);
                             this.scheduleNext(true);
-                            context.getSource().sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GRAY));
+                            context.getSource().sendMessage(Component.text("Zihou: config.yml reloaded", NamedTextColor.GRAY));
                             return Command.SINGLE_SUCCESS;
                         })
                 )
