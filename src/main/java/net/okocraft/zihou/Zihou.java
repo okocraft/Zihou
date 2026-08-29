@@ -6,11 +6,13 @@ import org.jetbrains.annotations.VisibleForTesting;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAccessor;
+import java.time.zone.ZoneRules;
 import java.util.function.Function;
 
 public record Zihou(Clock clock, Function<TemporalAccessor, Component> toMessage) {
@@ -28,9 +30,21 @@ public record Zihou(Clock clock, Function<TemporalAccessor, Component> toMessage
     }
 
     public Duration calculateTaskDelay() {
-        ZonedDateTime now = ZonedDateTime.now(this.clock);
-        ZonedDateTime next = now.truncatedTo(ChronoUnit.HOURS).plusHours(1);
-        return Duration.between(now.toInstant(), next.toInstant());
+        ZoneId zone = this.clock.getZone();
+        ZoneRules rules = zone.getRules();
+        Instant now = this.clock.instant();
+
+        LocalDateTime candidate = LocalDateTime.ofInstant(now, zone).truncatedTo(ChronoUnit.HOURS);
+
+        while (true) {
+            for (ZoneOffset offset : rules.getValidOffsets(candidate)) { // empty if the local hour is in a DST gap
+                Instant instant = candidate.toInstant(offset);
+                if (instant.isAfter(now)) {
+                    return Duration.between(now, instant);
+                }
+            }
+            candidate = candidate.plusHours(1);
+        }
     }
 
     @VisibleForTesting

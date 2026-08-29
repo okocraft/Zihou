@@ -17,7 +17,6 @@ import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.time.ZoneId;
 import java.util.function.Consumer;
 
@@ -29,6 +28,7 @@ public class ZihouVelocity {
 
     private ScheduledTask scheduledTask;
     private ZihouConfig config;
+    private Zihou zihou;
 
     @Inject
     public ZihouVelocity(@NotNull ProxyServer server, @NotNull Logger logger,
@@ -109,13 +109,24 @@ public class ZihouVelocity {
     private synchronized void schedule() {
         if (this.scheduledTask != null) {
             this.scheduledTask.cancel();
+            this.scheduledTask = null;
         }
 
-        Zihou zihou = Zihou.create(this.config);
+        this.zihou = Zihou.create(this.config);
+        this.scheduleNext(this.zihou);
+    }
+
+    private synchronized void scheduleNext(Zihou zihou) {
+        if (this.zihou != zihou) { // the config has been reloaded while the task was running
+            return;
+        }
+
         this.scheduledTask = this.server.getScheduler()
-            .buildTask(this, () -> zihou.announce(this.server))
+            .buildTask(this, () -> {
+                zihou.announce(this.server);
+                this.scheduleNext(zihou);
+            })
             .delay(zihou.calculateTaskDelay())
-            .repeat(Duration.ofHours(1))
             .schedule();
     }
 }
